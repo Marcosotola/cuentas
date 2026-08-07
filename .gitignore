@@ -43,3 +43,6 @@ next-env.d.ts
 # credenciales locales, nunca commitear
 *firebase-adminsdk*.json
 .env*.local
+
+# estado local de herramientas
+.claude/
