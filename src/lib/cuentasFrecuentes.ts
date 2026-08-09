@@ -3,7 +3,8 @@ import type { Categoria } from "@/types/bill";
 export const CUENTAS_FRECUENTES: { label: string; categoria: Categoria }[] = [
   { label: "Ecogas", categoria: "gas" },
   { label: "Galicia", categoria: "tarjeta" },
-  { label: "Naranja", categoria: "tarjeta" },
+  { label: "Naranja Lu", categoria: "tarjeta" },
+  { label: "Naranja Ma", categoria: "tarjeta" },
   { label: "ICBC", categoria: "tarjeta" },
   { label: "Alquiler local", categoria: "alquiler" },
   { label: "Aguas", categoria: "agua" },
