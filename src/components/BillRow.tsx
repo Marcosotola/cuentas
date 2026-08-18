@@ -117,13 +117,18 @@ export function BillRow({
           <p className={`text-[13px] ${styles.fg}`}>
             {bill.pagada
               ? bill.fechaPago
-                ? `Pagada el ${format(bill.fechaPago, "d MMM", { locale: es })} · Vencía el ${format(bill.fechaVencimiento, "d MMM", { locale: es })}`
-                : `Pagada · Vencía el ${format(bill.fechaVencimiento, "d MMM", { locale: es })}`
+                ? `Pagada el ${format(bill.fechaPago, "d MMM", { locale: es })}`
+                : "Pagada"
               : status === "vencida"
                 ? `Vencida el ${format(bill.fechaVencimiento, "d MMM", { locale: es })}`
                 : `Vence el ${format(bill.fechaVencimiento, "d MMM", { locale: es })}`}
             <span className="text-muted-foreground"> · {label}</span>
           </p>
+          {bill.pagada && (
+            <p className="text-[13px] text-muted-foreground">
+              Vencía el {format(bill.fechaVencimiento, "d MMM", { locale: es })}
+            </p>
+          )}
         </div>
 
         <span
