@@ -8,6 +8,8 @@ import { CATEGORY_META } from "@/lib/categoryMeta";
 import { CUENTAS_FRECUENTES } from "@/lib/cuentasFrecuentes";
 import type { Bill, Categoria, NewBillInput } from "@/types/bill";
 
+const CATEGORIAS = Object.keys(CATEGORY_META) as Categoria[];
+
 function toDateInputValue(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
@@ -160,6 +162,32 @@ export function BillFormSheet({
             className="w-full min-w-0 rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none focus:border-primary"
           />
         </label>
+
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[13px] font-medium text-muted-foreground">Categoría</span>
+          <div className="flex flex-wrap gap-2">
+            {CATEGORIAS.map((cat) => {
+              const meta = CATEGORY_META[cat];
+              const Icon = meta.icon;
+              const active = categoria === cat;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategoria(cat)}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-[13px] font-medium transition-colors ${
+                    active
+                      ? "border-primary bg-primary-soft text-primary"
+                      : "border-border bg-surface-muted text-foreground/80"
+                  }`}
+                >
+                  <Icon size={14} strokeWidth={2} />
+                  {meta.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <div className="flex gap-3">
           <label className="flex min-w-0 flex-1 flex-col gap-1.5">
