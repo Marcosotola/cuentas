@@ -8,6 +8,9 @@ import {
   addBill,
   deleteBill,
   duplicateBillNextMonth,
+  editarPago,
+  eliminarPago,
+  registrarPago,
   setPagada,
   subscribeToBills,
   subscribeToBillsForCurrentMonth,
@@ -103,7 +106,10 @@ export function useBills(mode: RangeMode) {
         pagadoTotal += bill.monto;
         cantidadPagadas += 1;
       } else {
-        pendienteTotal += bill.monto;
+        // Los pagos parciales cuentan como pagado, salvo en el arrastre de meses
+        // anteriores (no entra en el gasto total, así "Pagado" nunca lo supera).
+        if (!bill.esArrastre) pagadoTotal += bill.montoPagado;
+        pendienteTotal += bill.monto - bill.montoPagado;
         if (isVencida(bill.fechaVencimiento)) vencidasCount += 1;
       }
     }
@@ -133,6 +139,24 @@ export function useBills(mode: RangeMode) {
     await setPagada(bill, pagada);
   }, []);
 
+  const pagarParcial = useCallback(async (bill: Bill, importe: number, fecha: Date) => {
+    await ensureAnonymousAuth();
+    await registrarPago(bill, importe, fecha);
+  }, []);
+
+  const corregirPago = useCallback(
+    async (bill: Bill, index: number, importe: number, fecha: Date) => {
+      await ensureAnonymousAuth();
+      await editarPago(bill, index, importe, fecha);
+    },
+    [],
+  );
+
+  const borrarPago = useCallback(async (bill: Bill, index: number) => {
+    await ensureAnonymousAuth();
+    await eliminarPago(bill, index);
+  }, []);
+
   const remove = useCallback(async (id: string) => {
     await ensureAnonymousAuth();
     await deleteBill(id);
@@ -151,6 +175,9 @@ export function useBills(mode: RangeMode) {
     create,
     update,
     togglePagada,
+    pagarParcial,
+    corregirPago,
+    borrarPago,
     remove,
     duplicate,
   };

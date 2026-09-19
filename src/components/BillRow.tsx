@@ -36,6 +36,7 @@ export function BillRow({
   const [pending, setPending] = useState(false);
   const draggedRef = useRef(false);
   const status = getStatus(bill);
+  const parcial = !bill.pagada && bill.montoPagado > 0;
   const { icon: Icon, label } = CATEGORY_META[bill.categoria];
   const styles = STATUS_STYLES[status];
 
@@ -129,15 +130,29 @@ export function BillRow({
               Vencía el {format(bill.fechaVencimiento, "d MMM", { locale: es })}
             </p>
           )}
+          {parcial && (
+            <p className="text-[13px] text-success">
+              Pagaste {formatMonto(bill.montoPagado)}
+              {bill.pagos.length > 0 &&
+                ` · último el ${format(bill.pagos[bill.pagos.length - 1].fecha, "d MMM", { locale: es })}`}
+            </p>
+          )}
         </div>
 
-        <span
-          className={`shrink-0 text-[15px] font-semibold tabular-nums ${
-            bill.pagada ? "text-muted-foreground line-through" : "text-foreground"
-          }`}
-        >
-          {formatMonto(bill.monto)}
-        </span>
+        <div className="shrink-0 text-right">
+          <span
+            className={`block text-[15px] font-semibold tabular-nums ${
+              bill.pagada ? "text-muted-foreground line-through" : "text-foreground"
+            }`}
+          >
+            {formatMonto(parcial ? bill.monto - bill.montoPagado : bill.monto)}
+          </span>
+          {parcial && (
+            <span className="block text-[12px] tabular-nums text-muted-foreground">
+              de {formatMonto(bill.monto)}
+            </span>
+          )}
+        </div>
       </motion.div>
     </div>
   );

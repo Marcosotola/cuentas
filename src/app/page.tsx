@@ -16,8 +16,20 @@ export default function Home() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
 
-  const { bills, loading, error, summary, create, update, togglePagada, remove, duplicate } =
-    useBills(mode);
+  const {
+    bills,
+    loading,
+    error,
+    summary,
+    create,
+    update,
+    togglePagada,
+    pagarParcial,
+    corregirPago,
+    borrarPago,
+    remove,
+    duplicate,
+  } = useBills(mode);
 
   function openNewBillForm() {
     setEditingBill(null);
@@ -73,6 +85,9 @@ export default function Home() {
         }}
         onDelete={remove}
         onDuplicate={duplicate}
+        onPagoParcial={pagarParcial}
+        onEditarPago={corregirPago}
+        onEliminarPago={borrarPago}
       />
 
       <FilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} mode={mode} onModeChange={setMode} />

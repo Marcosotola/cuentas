@@ -8,11 +8,20 @@ export type Categoria =
   | "expensas"
   | "otro";
 
+export interface Pago {
+  importe: number;
+  fecha: Date;
+}
+
 export interface Bill {
   id: string;
   descripcion: string;
   categoria: Categoria;
   monto: number;
+  /** Suma de los pagos parciales registrados. Cuando la cuenta está pagada equivale a `monto`. */
+  montoPagado: number;
+  /** Historial de pagos parciales, en el orden en que se registraron. */
+  pagos: Pago[];
   fechaVencimiento: Date;
   pagada: boolean;
   fechaPago: Date | null;
