@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { MonthNavigator } from "@/components/MonthNavigator";
 import { SummaryCard } from "@/components/SummaryCard";
+import { DueDateStrip } from "@/components/DueDateStrip";
 import { BillList } from "@/components/BillList";
 import { BillFormSheet } from "@/components/BillFormSheet";
 import { FilterSheet } from "@/components/FilterSheet";
 import { useBills, type RangeMode } from "@/hooks/useBills";
+import { buildDueDateChips, groupByDueDate } from "@/lib/dueDates";
 import type { Bill } from "@/types/bill";
 
 export default function Home() {
@@ -31,6 +33,18 @@ export default function Home() {
     duplicate,
   } = useBills(mode);
 
+  const groups = useMemo(() => groupByDueDate(bills), [bills]);
+  const chips = useMemo(() => buildDueDateChips(groups), [groups]);
+  const headerRef = useRef<HTMLElement>(null);
+
+  function scrollToDueDate(key: string) {
+    const target = document.getElementById(`vence-${key}`);
+    if (!target) return;
+    // El header es sticky: dejamos el encabezado del grupo justo debajo de él.
+    const offset = (headerRef.current?.offsetHeight ?? 0) + 12;
+    window.scrollTo({ top: target.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" });
+  }
+
   function openNewBillForm() {
     setEditingBill(null);
     setFormOpen(true);
@@ -45,13 +59,14 @@ export default function Home() {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
+      <header ref={headerRef} className="sticky top-0 z-30 border-b border-border/60 bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <h1 className="px-4 pt-3 text-[22px] font-bold tracking-tight">Cuentas</h1>
         <MonthNavigator mode={mode} onModeChange={setMode} onOpenFilter={() => setFilterOpen(true)} />
       </header>
 
       <main className="flex-1 pb-28">
         <SummaryCard summary={summary} />
+        {!loading && <DueDateStrip chips={chips} onSelect={scrollToDueDate} />}
 
         {error && (
           <div className="mx-4 mt-4 rounded-xl border border-danger/25 bg-danger-soft px-4 py-3 text-[13px] text-danger">
@@ -60,7 +75,7 @@ export default function Home() {
         )}
 
         <div className="mt-5">
-          <BillList bills={bills} loading={loading} onTogglePagada={togglePagada} onEdit={openEditForm} />
+          <BillList groups={groups} loading={loading} onTogglePagada={togglePagada} onEdit={openEditForm} />
         </div>
       </main>
 
