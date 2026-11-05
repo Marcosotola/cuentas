@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Plus, Search, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, History, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { BottomSheet } from "./BottomSheet";
 import { SelectSheet } from "./SelectSheet";
 import { useCatalogo } from "@/context/CatalogoContext";
@@ -24,10 +24,13 @@ export function CatalogoSheet({
   open,
   onClose,
   tabInicial = "cuentas",
+  onVerHistorial,
 }: {
   open: boolean;
   onClose: () => void;
   tabInicial?: Tab;
+  /** Abre el historial de la cuenta con ese nombre. */
+  onVerHistorial: (nombre: string) => void;
 }) {
   const [tab, setTab] = useState<Tab>(tabInicial);
   const [vista, setVista] = useState<Vista>({ tipo: "lista" });
@@ -78,13 +81,16 @@ export function CatalogoSheet({
             ))}
           </div>
           {tab === "cuentas" ? (
-            <ListaCuentas onEditar={(cuenta) => setVista({ tipo: "cuenta", cuenta })} />
+            <ListaCuentas
+              onEditar={(cuenta) => setVista({ tipo: "cuenta", cuenta })}
+              onVerHistorial={onVerHistorial}
+            />
           ) : (
             <ListaCategorias onEditar={(categoria) => setVista({ tipo: "categoria", categoria })} />
           )}
         </div>
       )}
-      {vista.tipo === "cuenta" && <FormCuenta cuenta={vista.cuenta} onListo={volver} />}
+      {vista.tipo === "cuenta" && <FormCuenta cuenta={vista.cuenta} onListo={volver} onVerHistorial={onVerHistorial} />}
       {vista.tipo === "categoria" && <FormCategoria categoria={vista.categoria} onListo={volver} />}
     </BottomSheet>
   );
@@ -103,7 +109,13 @@ function BotonNuevo({ label, onClick }: { label: string; onClick: () => void }) 
   );
 }
 
-function ListaCuentas({ onEditar }: { onEditar: (cuenta: CuentaGuardada | null) => void }) {
+function ListaCuentas({
+  onEditar,
+  onVerHistorial,
+}: {
+  onEditar: (cuenta: CuentaGuardada | null) => void;
+  onVerHistorial: (nombre: string) => void;
+}) {
   const { cuentas, categorias, categoria } = useCatalogo();
   const [busqueda, setBusqueda] = useState("");
   /** Categorías plegadas (por defecto todas abiertas). */
@@ -178,14 +190,25 @@ function ListaCuentas({ onEditar }: { onEditar: (cuenta: CuentaGuardada | null) 
             {abierto && (
               <ul className="border-t border-border">
                 {lista.map((cuenta) => (
-                  <li key={cuenta.id} className="border-b border-border last:border-b-0">
+                  <li key={cuenta.id} className="flex items-center border-b border-border last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => onVerHistorial(cuenta.nombre)}
+                      className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-3.5 pr-2 text-left active:bg-surface-muted"
+                    >
+                      <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{cuenta.nombre}</span>
+                      <span className="flex shrink-0 items-center gap-1 text-[12px] text-muted-foreground">
+                        <History size={13} />
+                        Historial
+                      </span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => onEditar(cuenta)}
-                      className="flex w-full items-center gap-3 px-3.5 py-3 text-left active:bg-surface-muted"
+                      aria-label={`Editar ${cuenta.nombre}`}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center border-l border-border text-muted-foreground active:bg-surface-muted"
                     >
-                      <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{cuenta.nombre}</span>
-                      <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
+                      <Pencil size={15} />
                     </button>
                   </li>
                 ))}
@@ -306,13 +329,23 @@ function useGuardado(onListo: () => void) {
   return { guardando, error, setError, ejecutar };
 }
 
-function FormCuenta({ cuenta, onListo }: { cuenta: CuentaGuardada | null; onListo: () => void }) {
+function FormCuenta({
+  cuenta,
+  onListo,
+  onVerHistorial,
+}: {
+  cuenta: CuentaGuardada | null;
+  onListo: () => void;
+  onVerHistorial: (nombre: string) => void;
+}) {
   const { cuentas, categorias, categoria, crearCuenta, editarCuenta, borrarCuenta } = useCatalogo();
   const [nombre, setNombre] = useState(cuenta?.nombre ?? "");
   const [categoriaId, setCategoriaId] = useState(cuenta?.categoriaId ?? CATEGORIA_COMODIN);
   const [eligiendoCategoria, setEligiendoCategoria] = useState(false);
+  const [renombrarCargadas, setRenombrarCargadas] = useState(true);
   const { guardando, error, setError, ejecutar } = useGuardado(onListo);
   const cat = categoria(categoriaId);
+  const cambioNombre = cuenta !== null && nombre.trim() !== "" && nombre.trim() !== cuenta.nombre;
 
   function guardar(e: React.FormEvent) {
     e.preventDefault();
@@ -322,7 +355,11 @@ function FormCuenta({ cuenta, onListo }: { cuenta: CuentaGuardada | null; onList
     if (repetida) return setError(`Ya tenés una cuenta llamada “${limpio}”.`);
     ejecutar(() =>
       cuenta
-        ? editarCuenta(cuenta.id, { nombre: limpio, categoriaId })
+        ? editarCuenta(
+            cuenta.id,
+            { nombre: limpio, categoriaId },
+            renombrarCargadas ? cuenta.nombre : undefined,
+          )
         : crearCuenta({ nombre: limpio, categoriaId }),
     );
   }
@@ -353,10 +390,22 @@ function FormCuenta({ cuenta, onListo }: { cuenta: CuentaGuardada | null; onList
         </button>
       </div>
 
-      {cuenta && (
-        <p className="-mt-2 text-[12px] text-muted-foreground">
-          Los cambios valen para las cuentas que cargues de ahora en más; las ya cargadas no se modifican.
-        </p>
+      {cambioNombre && (
+        <button
+          type="button"
+          onClick={() => setRenombrarCargadas((v) => !v)}
+          aria-pressed={renombrarCargadas}
+          className="-mt-2 flex items-start gap-2 text-left text-[13px] text-muted-foreground"
+        >
+          <span
+            className={`mt-px flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+              renombrarCargadas ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
+            }`}
+          >
+            {renombrarCargadas && <Check size={12} strokeWidth={3} />}
+          </span>
+          Cambiar también el nombre en las cuentas ya cargadas como “{cuenta.nombre}”, así el historial queda junto.
+        </button>
       )}
 
       {error && <p className="text-[13px] text-danger">{error}</p>}
@@ -370,6 +419,17 @@ function FormCuenta({ cuenta, onListo }: { cuenta: CuentaGuardada | null; onList
       </button>
 
       <div className="flex flex-col gap-2.5">
+        {cuenta && (
+          <button
+            type="button"
+            onClick={() => onVerHistorial(cuenta.nombre)}
+            disabled={guardando}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-border py-3 text-[14px] font-medium text-foreground/80 active:bg-surface-muted disabled:opacity-50"
+          >
+            <History size={15} />
+            Ver historial
+          </button>
+        )}
         {cuenta && (
           <BotonBorrar
             aviso={`¿Borrar “${cuenta.nombre}” de tus cuentas? Las cuentas ya cargadas con ese nombre no se borran.`}

@@ -31,7 +31,7 @@ interface Catalogo {
   editarCategoria: (id: string, input: CategoriaInput) => Promise<void>;
   borrarCategoria: (id: string) => Promise<void>;
   crearCuenta: (input: CuentaGuardadaInput) => Promise<void>;
-  editarCuenta: (id: string, input: CuentaGuardadaInput) => Promise<void>;
+  editarCuenta: (id: string, input: CuentaGuardadaInput, renombrarDesde?: string) => Promise<void>;
   borrarCuenta: (id: string) => Promise<void>;
 }
 

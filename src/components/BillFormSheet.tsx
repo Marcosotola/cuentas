@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Check, ChevronDown, Copy, List, Pencil, Repeat, Settings2, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Copy, History, List, Pencil, Repeat, Settings2, Trash2 } from "lucide-react";
 import { BottomSheet } from "./BottomSheet";
 import { SelectSheet } from "./SelectSheet";
 import { useCatalogo } from "@/context/CatalogoContext";
@@ -35,6 +35,7 @@ export function BillFormSheet({
   onEditarPago,
   onEliminarPago,
   onGestionar,
+  onVerHistorial,
 }: {
   open: boolean;
   onClose: () => void;
@@ -48,6 +49,8 @@ export function BillFormSheet({
   onEliminarPago: (bill: Bill, index: number) => Promise<void>;
   /** Abre la gestión de cuentas y categorías guardadas. */
   onGestionar: (tab: "cuentas" | "categorias") => void;
+  /** Abre el historial de la cuenta con ese nombre. */
+  onVerHistorial: (nombre: string) => void;
 }) {
   const catalogo = useCatalogo();
   const [descripcion, setDescripcion] = useState("");
@@ -523,6 +526,18 @@ export function BillFormSheet({
         >
           {initial ? "Guardar cambios" : "Agregar cuenta"}
         </button>
+
+        {initial && (
+          <button
+            type="button"
+            onClick={() => onVerHistorial(initial.descripcion)}
+            disabled={submitting}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-border py-3 text-[14px] font-medium text-foreground/80 active:bg-surface-muted"
+          >
+            <History size={15} />
+            Ver historial de “{initial.descripcion}”
+          </button>
+        )}
 
         {initial && (
           <div className="flex gap-2.5">

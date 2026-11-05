@@ -173,8 +173,26 @@ export async function crearCuentaGuardada(input: CuentaGuardadaInput): Promise<v
   await addDoc(collection(getDb(), CUENTAS_GUARDADAS), { ...input, createdAt: serverTimestamp() });
 }
 
-export async function editarCuentaGuardada(id: string, input: CuentaGuardadaInput): Promise<void> {
-  await updateDoc(doc(getDb(), CUENTAS_GUARDADAS, id), input);
+/**
+ * Edita una cuenta guardada. Si se pasa `renombrarDesde`, también cambia el
+ * nombre de las cuentas ya cargadas con el nombre anterior, para que su
+ * historial siga junto.
+ */
+export async function editarCuentaGuardada(
+  id: string,
+  input: CuentaGuardadaInput,
+  renombrarDesde?: string,
+): Promise<void> {
+  const db = getDb();
+  if (renombrarDesde && renombrarDesde !== input.nombre) {
+    const bills = await getDocs(query(collection(db, BILLS), where("descripcion", "==", renombrarDesde)));
+    for (let i = 0; i < bills.docs.length; i += 450) {
+      const batch = writeBatch(db);
+      for (const d of bills.docs.slice(i, i + 450)) batch.update(d.ref, { descripcion: input.nombre });
+      await batch.commit();
+    }
+  }
+  await updateDoc(doc(db, CUENTAS_GUARDADAS, id), input);
 }
 
 export async function borrarCuentaGuardada(id: string): Promise<void> {
