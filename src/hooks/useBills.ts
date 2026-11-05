@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { endOfMonth, endOfYear, isSameMonth, startOfMonth, startOfYear } from "date-fns";
 import { isVencida } from "@/lib/dates";
+import { costo } from "@/lib/montos";
 import { ensureAnonymousAuth } from "@/lib/firebase";
 import {
   addBill,
@@ -100,10 +101,10 @@ export function useBills(mode: RangeMode) {
     let gastoTotalMes = 0;
 
     for (const bill of bills) {
-      if (!bill.esArrastre) gastoTotalMes += bill.monto;
+      if (!bill.esArrastre) gastoTotalMes += costo(bill);
 
       if (bill.pagada) {
-        pagadoTotal += bill.monto;
+        pagadoTotal += costo(bill);
         cantidadPagadas += 1;
       } else {
         // Los pagos parciales cuentan como pagado, salvo en el arrastre de meses

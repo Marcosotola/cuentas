@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ensureAnonymousAuth } from "@/lib/firebase";
 import { subscribeToHistorial } from "@/lib/bills";
+import { costo } from "@/lib/montos";
 import type { Bill } from "@/types/bill";
 
 export interface HistorialResumen {
@@ -61,8 +62,8 @@ export function useHistorial(descripcion: string | null) {
     let pendiente = 0;
     let suma = 0;
     for (const bill of bills) {
-      suma += bill.monto;
-      totalPagado += bill.pagada ? bill.monto : bill.montoPagado;
+      suma += costo(bill);
+      totalPagado += bill.pagada ? costo(bill) : bill.montoPagado;
       if (!bill.pagada) pendiente += bill.monto - bill.montoPagado;
     }
     return {

@@ -8,6 +8,7 @@ import { Check, Repeat, StickyNote } from "lucide-react";
 import { useCatalogo } from "@/context/CatalogoContext";
 import { isVencida } from "@/lib/dates";
 import { formatMonto } from "@/lib/format";
+import { costo, pagadoDeMas } from "@/lib/montos";
 import type { Bill } from "@/types/bill";
 
 type Status = "pagada" | "vencida" | "pendiente";
@@ -37,6 +38,7 @@ export function BillRow({
   const draggedRef = useRef(false);
   const status = getStatus(bill);
   const parcial = !bill.pagada && bill.montoPagado > 0;
+  const deMas = pagadoDeMas(bill);
   const { icon: Icon, nombre: label } = useCatalogo().categoria(bill.categoria);
   const styles = STATUS_STYLES[status];
 
@@ -145,11 +147,16 @@ export function BillRow({
               bill.pagada ? "text-muted-foreground line-through" : "text-foreground"
             }`}
           >
-            {formatMonto(parcial ? bill.monto - bill.montoPagado : bill.monto)}
+            {formatMonto(parcial ? bill.monto - bill.montoPagado : costo(bill))}
           </span>
           {parcial && (
             <span className="block text-[12px] tabular-nums text-muted-foreground">
               de {formatMonto(bill.monto)}
+            </span>
+          )}
+          {deMas > 0 && (
+            <span className="block text-[12px] tabular-nums text-muted-foreground">
+              {formatMonto(deMas)} de más
             </span>
           )}
         </div>

@@ -8,6 +8,7 @@ import { BottomSheet } from "./BottomSheet";
 import { useHistorial } from "@/hooks/useHistorial";
 import { isVencida } from "@/lib/dates";
 import { formatMonto } from "@/lib/format";
+import { costo, pagadoDeMas } from "@/lib/montos";
 import type { Bill } from "@/types/bill";
 
 const MESES_GRAFICO = 12;
@@ -18,8 +19,11 @@ function capitalizar(texto: string): string {
 
 function estado(bill: Bill): { texto: string; clase: string } {
   if (bill.pagada) {
+    const extra = pagadoDeMas(bill);
     return {
-      texto: bill.fechaPago ? `Pagada el ${format(bill.fechaPago, "d MMM", { locale: es })}` : "Pagada",
+      texto:
+        (bill.fechaPago ? `Pagada el ${format(bill.fechaPago, "d MMM", { locale: es })}` : "Pagada") +
+        (extra > 0 ? ` · ${formatMonto(extra)} de más` : ""),
       clase: "text-success",
     };
   }
@@ -89,7 +93,7 @@ export function HistorialSheet({
                 <h3 className="flex items-baseline justify-between px-1 pb-1.5 text-[12px] font-semibold uppercase tracking-wide text-muted-foreground">
                   <span>{anio}</span>
                   <span className="tabular-nums normal-case tracking-normal">
-                    {formatMonto(lista.reduce((t, b) => t + b.monto, 0))}
+                    {formatMonto(lista.reduce((t, b) => t + costo(b), 0))}
                   </span>
                 </h3>
                 <ul className="overflow-hidden rounded-xl border border-border bg-background">
@@ -109,7 +113,7 @@ export function HistorialSheet({
                             <span className={`block truncate text-[12px] ${e.clase}`}>{e.texto}</span>
                           </span>
                           <span className="shrink-0 text-[15px] font-semibold tabular-nums">
-                            {formatMonto(bill.monto)}
+                            {formatMonto(costo(bill))}
                           </span>
                           <ChevronRight size={16} className="shrink-0 text-muted-foreground" />
                         </button>
@@ -139,7 +143,7 @@ function Dato({ titulo, valor, clase }: { titulo: string; valor: string; clase?:
 function Grafico({ bills }: { bills: Bill[] }) {
   const ultimas = useMemo(() => bills.slice(0, MESES_GRAFICO).reverse(), [bills]);
   const [elegida, setElegida] = useState<string | null>(null);
-  const max = Math.max(...ultimas.map((b) => b.monto), 1);
+  const max = Math.max(...ultimas.map((b) => costo(b)), 1);
   const activa = ultimas.find((b) => b.id === elegida) ?? ultimas[ultimas.length - 1];
 
   return (
@@ -152,7 +156,7 @@ function Grafico({ bills }: { bills: Bill[] }) {
           <span className="text-muted-foreground">
             {capitalizar(format(activa.fechaVencimiento, "MMM yy", { locale: es }))}:{" "}
           </span>
-          <span className="font-semibold">{formatMonto(activa.monto)}</span>
+          <span className="font-semibold">{formatMonto(costo(activa))}</span>
         </p>
       </div>
       <div className="mt-3 flex h-24 items-end gap-0.5 border-b border-border" role="list">
@@ -164,14 +168,14 @@ function Grafico({ bills }: { bills: Bill[] }) {
               type="button"
               role="listitem"
               onClick={() => setElegida(bill.id)}
-              aria-label={`${format(bill.fechaVencimiento, "MMMM yyyy", { locale: es })}: ${formatMonto(bill.monto)}`}
+              aria-label={`${format(bill.fechaVencimiento, "MMMM yyyy", { locale: es })}: ${formatMonto(costo(bill))}`}
               className="flex h-full flex-1 items-end justify-center"
             >
               <span
                 className={`block w-full max-w-6 rounded-t-[4px] transition-colors ${
                   esActiva ? "bg-primary" : "bg-primary/35"
                 }`}
-                style={{ height: `${Math.max((bill.monto / max) * 100, 2)}%` }}
+                style={{ height: `${Math.max((costo(bill) / max) * 100, 2)}%` }}
               />
             </button>
           );
