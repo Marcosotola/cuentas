@@ -1,16 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { Copy, Pencil, Repeat, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Copy, History, List, Pencil, Repeat, Settings2, Trash2 } from "lucide-react";
 import { BottomSheet } from "./BottomSheet";
-import { CATEGORY_META } from "@/lib/categoryMeta";
-import { CUENTAS_FRECUENTES } from "@/lib/cuentasFrecuentes";
+import { SelectSheet } from "./SelectSheet";
+import { useCatalogo } from "@/context/CatalogoContext";
+import { CATEGORIA_COMODIN } from "@/lib/catalogo";
+import { iconoDe } from "@/lib/categoryMeta";
 import { formatMonto } from "@/lib/format";
+import { normalizar } from "@/lib/texto";
 import type { Bill, Categoria, NewBillInput } from "@/types/bill";
-
-const CATEGORIAS = Object.keys(CATEGORY_META) as Categoria[];
+import type { CuentaGuardada } from "@/types/catalogo";
 
 function toDateInputValue(date: Date): string {
   return format(date, "yyyy-MM-dd");
@@ -32,6 +34,8 @@ export function BillFormSheet({
   onPagoParcial,
   onEditarPago,
   onEliminarPago,
+  onGestionar,
+  onVerHistorial,
 }: {
   open: boolean;
   onClose: () => void;
@@ -43,9 +47,14 @@ export function BillFormSheet({
   onPagoParcial: (bill: Bill, importe: number, fecha: Date) => Promise<void>;
   onEditarPago: (bill: Bill, index: number, importe: number, fecha: Date) => Promise<void>;
   onEliminarPago: (bill: Bill, index: number) => Promise<void>;
+  /** Abre la gestión de cuentas y categorías guardadas. */
+  onGestionar: (tab: "cuentas" | "categorias") => void;
+  /** Abre el historial de la cuenta con ese nombre. */
+  onVerHistorial: (nombre: string) => void;
 }) {
+  const catalogo = useCatalogo();
   const [descripcion, setDescripcion] = useState("");
-  const [categoria, setCategoria] = useState<Categoria>("otro");
+  const [categoria, setCategoria] = useState<Categoria>(CATEGORIA_COMODIN);
   const [monto, setMonto] = useState("");
   const [fecha, setFecha] = useState(toDateInputValue(defaultDate));
   const [recurrente, setRecurrente] = useState(false);
@@ -56,6 +65,33 @@ export function BillFormSheet({
   const [editandoPago, setEditandoPago] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [eligiendo, setEligiendo] = useState<"cuenta" | "categoria" | null>(null);
+  const [sugiriendo, setSugiriendo] = useState(false);
+  const [guardarCuenta, setGuardarCuenta] = useState(false);
+
+  const termino = normalizar(descripcion);
+  const yaGuardada = catalogo.cuentas.some((c) => normalizar(c.nombre) === termino);
+  /** El texto escrito no coincide con ninguna cuenta guardada: se ofrece guardarla. */
+  const esNueva = termino.length > 0 && !yaGuardada;
+  const sugerencias = useMemo(
+    () =>
+      termino && !yaGuardada
+        ? catalogo.cuentas.filter((c) => normalizar(c.nombre).includes(termino)).slice(0, 5)
+        : [],
+    [catalogo.cuentas, termino, yaGuardada],
+  );
+  const categoriaActual = catalogo.categoria(categoria);
+  const CategoriaIcon = categoriaActual.icon;
+
+  const itemsCuentas = useMemo(() => {
+    const orden = new Map(catalogo.categorias.map((c, i) => [c.id, i]));
+    return [...catalogo.cuentas]
+      .sort((a, b) => (orden.get(a.categoriaId) ?? Infinity) - (orden.get(b.categoriaId) ?? Infinity))
+      .map((c) => {
+        const cat = catalogo.categoria(c.categoriaId);
+        return { id: c.id, label: c.nombre, icon: cat.icon, group: cat.nombre };
+      });
+  }, [catalogo]);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- reset the form fields whenever the sheet opens */
@@ -69,7 +105,7 @@ export function BillFormSheet({
       setObservaciones(initial.observaciones);
     } else {
       setDescripcion("");
-      setCategoria("otro");
+      setCategoria(CATEGORIA_COMODIN);
       setMonto("");
       setFecha(toDateInputValue(defaultDate));
       setRecurrente(false);
@@ -79,12 +115,15 @@ export function BillFormSheet({
     setFechaPago(toDateInputValue(new Date()));
     setEditandoPago(null);
     setError(null);
+    setEligiendo(null);
+    setGuardarCuenta(false);
     /* eslint-enable react-hooks/set-state-in-effect */
   }, [open, initial, defaultDate]);
 
-  function pickCuenta(cuenta: { label: string; categoria: Categoria }) {
-    setDescripcion(cuenta.label);
-    setCategoria(cuenta.categoria);
+  function pickCuenta(cuenta: CuentaGuardada) {
+    setDescripcion(cuenta.nombre);
+    setCategoria(cuenta.categoriaId);
+    setSugiriendo(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -113,6 +152,10 @@ export function BillFormSheet({
         recurrente,
         observaciones: observaciones.trim(),
       });
+      if (esNueva && guardarCuenta) {
+        // Si falla no se pierde la cuenta a pagar, que ya se guardó.
+        await catalogo.crearCuenta({ nombre: descripcion.trim(), categoriaId: categoria }).catch(() => {});
+      }
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Algo salió mal.");
@@ -210,65 +253,84 @@ export function BillFormSheet({
     <BottomSheet open={open} onClose={onClose} title={initial ? "Editar cuenta" : "Nueva cuenta"}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-muted-foreground">Tus cuentas</span>
-          <div className="flex flex-wrap gap-2">
-            {CUENTAS_FRECUENTES.map((cuenta) => {
-              const Icon = CATEGORY_META[cuenta.categoria].icon;
-              const active = descripcion === cuenta.label;
-              return (
-                <button
-                  key={cuenta.label}
-                  type="button"
-                  onClick={() => pickCuenta(cuenta)}
-                  className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-[13px] font-medium transition-colors ${
-                    active
-                      ? "border-primary bg-primary-soft text-primary"
-                      : "border-border bg-surface-muted text-foreground/80"
-                  }`}
-                >
-                  <Icon size={14} strokeWidth={2} />
-                  {cuenta.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+          <span className="text-[13px] font-medium text-muted-foreground">Cuenta</span>
+          <div className="relative flex gap-2">
+            <input
+              type="text"
+              value={descripcion}
+              onChange={(e) => {
+                setDescripcion(e.target.value);
+                setSugiriendo(true);
+              }}
+              onFocus={() => setSugiriendo(true)}
+              onBlur={() => setTimeout(() => setSugiriendo(false), 150)}
+              placeholder="Escribí o elegí de tus cuentas"
+              autoComplete="off"
+              className="w-full min-w-0 flex-1 rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none focus:border-primary"
+            />
+            <button
+              type="button"
+              onClick={() => setEligiendo("cuenta")}
+              aria-label="Elegir de tus cuentas"
+              className="flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-surface-muted px-3.5 text-[14px] font-medium text-foreground/80 active:bg-border"
+            >
+              <List size={16} />
+              Elegir
+            </button>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-medium text-muted-foreground">Descripción</span>
-          <input
-            type="text"
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            placeholder="Ej. Tarjeta Naranja"
-            className="w-full min-w-0 rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none focus:border-primary"
-          />
-        </label>
+            {sugiriendo && sugerencias.length > 0 && (
+              <ul className="absolute left-0 right-0 top-full z-10 mt-1.5 overflow-hidden rounded-xl border border-border bg-surface shadow-lg">
+                {sugerencias.map((cuenta) => {
+                  const { icon: Icon, nombre } = catalogo.categoria(cuenta.categoriaId);
+                  return (
+                    <li key={cuenta.id} className="border-b border-border last:border-b-0">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => pickCuenta(cuenta)}
+                        className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-left active:bg-surface-muted"
+                      >
+                        <Icon size={15} className="shrink-0 text-muted-foreground" />
+                        <span className="min-w-0 flex-1 truncate text-[15px] font-medium">{cuenta.nombre}</span>
+                        <span className="shrink-0 text-[12px] text-muted-foreground">{nombre}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {esNueva && (
+            <button
+              type="button"
+              onClick={() => setGuardarCuenta((v) => !v)}
+              aria-pressed={guardarCuenta}
+              className="flex items-center gap-2 self-start py-1 text-[13px] text-muted-foreground"
+            >
+              <span
+                className={`flex h-4.5 w-4.5 items-center justify-center rounded-md border transition-colors ${
+                  guardarCuenta ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
+                }`}
+              >
+                {guardarCuenta && <Check size={12} strokeWidth={3} />}
+              </span>
+              Guardar “{descripcion.trim()}” en tus cuentas
+            </button>
+          )}
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <span className="text-[13px] font-medium text-muted-foreground">Categoría</span>
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIAS.map((cat) => {
-              const meta = CATEGORY_META[cat];
-              const Icon = meta.icon;
-              const active = categoria === cat;
-              return (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setCategoria(cat)}
-                  className={`flex items-center gap-1.5 rounded-full border px-3 py-2 text-[13px] font-medium transition-colors ${
-                    active
-                      ? "border-primary bg-primary-soft text-primary"
-                      : "border-border bg-surface-muted text-foreground/80"
-                  }`}
-                >
-                  <Icon size={14} strokeWidth={2} />
-                  {meta.label}
-                </button>
-              );
-            })}
-          </div>
+          <button
+            type="button"
+            onClick={() => setEligiendo("categoria")}
+            className="flex w-full min-w-0 items-center gap-2.5 rounded-xl border border-border bg-background px-3.5 py-3 text-left text-[15px] outline-none focus:border-primary"
+          >
+            <CategoriaIcon size={16} className="text-muted-foreground" />
+            <span className="flex-1">{categoriaActual.nombre}</span>
+            <ChevronDown size={16} className="text-muted-foreground" />
+          </button>
         </div>
 
         <div className="flex gap-3">
@@ -466,6 +528,18 @@ export function BillFormSheet({
         </button>
 
         {initial && (
+          <button
+            type="button"
+            onClick={() => onVerHistorial(initial.descripcion)}
+            disabled={submitting}
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-border py-3 text-[14px] font-medium text-foreground/80 active:bg-surface-muted"
+          >
+            <History size={15} />
+            Ver historial de “{initial.descripcion}”
+          </button>
+        )}
+
+        {initial && (
           <div className="flex gap-2.5">
             <button
               type="button"
@@ -487,6 +561,50 @@ export function BillFormSheet({
           </div>
         )}
       </form>
+
+      <SelectSheet
+        open={eligiendo === "cuenta"}
+        onClose={() => setEligiendo(null)}
+        title="Tus cuentas"
+        items={itemsCuentas}
+        selectedId={catalogo.cuentas.find((c) => normalizar(c.nombre) === termino)?.id}
+        onSelect={(id) => {
+          const cuenta = catalogo.cuentas.find((c) => c.id === id);
+          if (cuenta) pickCuenta(cuenta);
+        }}
+        searchPlaceholder="Buscar cuenta…"
+        emptyText="Todavía no guardaste ninguna cuenta."
+        footer={<BotonGestionar label="Gestionar cuentas" onClick={() => {
+              setEligiendo(null);
+              onGestionar("cuentas");
+            }} />}
+      />
+      <SelectSheet
+        open={eligiendo === "categoria"}
+        onClose={() => setEligiendo(null)}
+        title="Categoría"
+        items={catalogo.categorias.map((c) => ({ id: c.id, label: c.nombre, icon: iconoDe(c.icono) }))}
+        selectedId={categoria}
+        onSelect={setCategoria}
+        searchPlaceholder="Buscar categoría…"
+        footer={<BotonGestionar label="Gestionar categorías" onClick={() => {
+              setEligiendo(null);
+              onGestionar("categorias");
+            }} />}
+      />
     </BottomSheet>
+  );
+}
+
+function BotonGestionar({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center justify-center gap-1.5 rounded-xl border border-border py-3 text-[14px] font-medium text-foreground/80 active:bg-surface-muted"
+    >
+      <Settings2 size={15} />
+      {label}
+    </button>
   );
 }

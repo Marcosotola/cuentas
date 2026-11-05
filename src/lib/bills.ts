@@ -292,3 +292,26 @@ export async function duplicateBillNextMonth(bill: Bill): Promise<void> {
     observaciones: bill.observaciones,
   });
 }
+
+/**
+ * Todas las cuentas cargadas con esa descripción (el historial de una cuenta
+ * guardada), de la más nueva a la más vieja. Solo filtra por igualdad, así no
+ * necesita índice compuesto; el orden se hace en el cliente.
+ */
+export function subscribeToHistorial(
+  descripcion: string,
+  onChange: (bills: Bill[]) => void,
+  onError: (error: Error) => void,
+): () => void {
+  return onSnapshot(
+    query(collection(getDb(), COLLECTION), where("descripcion", "==", descripcion)),
+    (snapshot) => {
+      onChange(
+        snapshot.docs
+          .map((d) => toBill(d.id, d.data()))
+          .sort((a, b) => b.fechaVencimiento.getTime() - a.fechaVencimiento.getTime()),
+      );
+    },
+    onError,
+  );
+}

@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 
@@ -15,7 +16,16 @@ export function BottomSheet({
   title: string;
   children: ReactNode;
 }) {
-  return (
+  // Se monta en <body>: así una hoja abierta desde otra (por ejemplo, un selector
+  // dentro del formulario) no queda atrapada en la transformación de la primera.
+  const enCliente = useSyncExternalStore(
+    noSuscribir,
+    () => true,
+    () => false,
+  );
+  if (!enCliente) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -59,6 +69,9 @@ export function BottomSheet({
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
+
+const noSuscribir = () => () => {};

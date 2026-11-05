@@ -1,12 +1,5 @@
-export type Categoria =
-  | "luz"
-  | "gas"
-  | "agua"
-  | "internet"
-  | "tarjeta"
-  | "alquiler"
-  | "expensas"
-  | "otro";
+/** Id de un documento de la colección `categorias`. */
+export type Categoria = string;
 
 export interface Pago {
   importe: number;

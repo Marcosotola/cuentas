@@ -1,26 +1,92 @@
 import {
+  Baby,
+  Banknote,
+  Briefcase,
   Building2,
+  Bus,
+  Car,
   CreditCard,
   Droplet,
+  Dumbbell,
+  FileText,
   Flame,
+  Fuel,
+  Gamepad2,
+  Gift,
+  GraduationCap,
+  HeartPulse,
   Home,
+  Landmark,
   Lightbulb,
+  Music,
+  PawPrint,
+  PiggyBank,
+  Plane,
   Receipt,
+  Shield,
+  ShoppingCart,
+  Smartphone,
+  Tv,
+  Users,
+  Utensils,
+  Wallet,
   Wifi,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
-import type { Categoria } from "@/types/bill";
+import type { CategoriaItem } from "@/types/catalogo";
 
-export const CATEGORY_META: Record<
-  Categoria,
-  { label: string; icon: LucideIcon }
-> = {
-  luz: { label: "Luz", icon: Lightbulb },
-  gas: { label: "Gas", icon: Flame },
-  agua: { label: "Agua", icon: Droplet },
-  internet: { label: "Internet", icon: Wifi },
-  tarjeta: { label: "Tarjeta", icon: CreditCard },
-  alquiler: { label: "Alquiler", icon: Home },
-  expensas: { label: "Expensas", icon: Building2 },
-  otro: { label: "Otro", icon: Receipt },
+/** Íconos que se pueden elegir para una categoría. La clave es lo que se guarda en Firestore. */
+export const ICONOS_CATEGORIA: Record<string, LucideIcon> = {
+  luz: Lightbulb,
+  gas: Flame,
+  agua: Droplet,
+  internet: Wifi,
+  tarjeta: CreditCard,
+  casa: Home,
+  edificio: Building2,
+  recibo: Receipt,
+  auto: Car,
+  combustible: Fuel,
+  super: ShoppingCart,
+  celular: Smartphone,
+  tv: Tv,
+  educacion: GraduationCap,
+  salud: HeartPulse,
+  seguro: Shield,
+  banco: Landmark,
+  billetera: Wallet,
+  efectivo: Banknote,
+  ahorro: PiggyBank,
+  gimnasio: Dumbbell,
+  mascotas: PawPrint,
+  hijos: Baby,
+  viajes: Plane,
+  transporte: Bus,
+  comida: Utensils,
+  regalos: Gift,
+  arreglos: Wrench,
+  musica: Music,
+  juegos: Gamepad2,
+  trabajo: Briefcase,
+  familia: Users,
+  impuestos: FileText,
 };
+
+export const ICONO_POR_DEFECTO = "recibo";
+
+export function iconoDe(clave: string | undefined): LucideIcon {
+  return (clave && ICONOS_CATEGORIA[clave]) || Receipt;
+}
+
+/** Categorías que se cargan la primera vez (los ids coinciden con los que ya usan las cuentas guardadas). */
+export const CATEGORIAS_INICIALES: CategoriaItem[] = [
+  { id: "luz", nombre: "Luz", icono: "luz", orden: 0 },
+  { id: "gas", nombre: "Gas", icono: "gas", orden: 1 },
+  { id: "agua", nombre: "Agua", icono: "agua", orden: 2 },
+  { id: "internet", nombre: "Internet", icono: "internet", orden: 3 },
+  { id: "tarjeta", nombre: "Tarjeta", icono: "tarjeta", orden: 4 },
+  { id: "alquiler", nombre: "Alquiler", icono: "casa", orden: 5 },
+  { id: "expensas", nombre: "Expensas", icono: "edificio", orden: 6 },
+  { id: "otro", nombre: "Otro", icono: "recibo", orden: 7 },
+];
