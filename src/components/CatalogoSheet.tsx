@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronDown, ChevronRight, History, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { ChevronDown, ChevronRight, History, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { BottomSheet } from "./BottomSheet";
 import { SelectSheet } from "./SelectSheet";
 import { useCatalogo } from "@/context/CatalogoContext";
@@ -342,10 +342,8 @@ function FormCuenta({
   const [nombre, setNombre] = useState(cuenta?.nombre ?? "");
   const [categoriaId, setCategoriaId] = useState(cuenta?.categoriaId ?? CATEGORIA_COMODIN);
   const [eligiendoCategoria, setEligiendoCategoria] = useState(false);
-  const [renombrarCargadas, setRenombrarCargadas] = useState(true);
   const { guardando, error, setError, ejecutar } = useGuardado(onListo);
   const cat = categoria(categoriaId);
-  const cambioNombre = cuenta !== null && nombre.trim() !== "" && nombre.trim() !== cuenta.nombre;
 
   function guardar(e: React.FormEvent) {
     e.preventDefault();
@@ -355,11 +353,8 @@ function FormCuenta({
     if (repetida) return setError(`Ya tenés una cuenta llamada “${limpio}”.`);
     ejecutar(() =>
       cuenta
-        ? editarCuenta(
-            cuenta.id,
-            { nombre: limpio, categoriaId },
-            renombrarCargadas ? cuenta.nombre : undefined,
-          )
+        ? // Las cuentas ya cargadas también se renombran, así el historial queda junto.
+          editarCuenta(cuenta.id, { nombre: limpio, categoriaId }, cuenta.nombre)
         : crearCuenta({ nombre: limpio, categoriaId }),
     );
   }
@@ -390,23 +385,6 @@ function FormCuenta({
         </button>
       </div>
 
-      {cambioNombre && (
-        <button
-          type="button"
-          onClick={() => setRenombrarCargadas((v) => !v)}
-          aria-pressed={renombrarCargadas}
-          className="-mt-2 flex items-start gap-2 text-left text-[13px] text-muted-foreground"
-        >
-          <span
-            className={`mt-px flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-              renombrarCargadas ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
-            }`}
-          >
-            {renombrarCargadas && <Check size={12} strokeWidth={3} />}
-          </span>
-          Cambiar también el nombre en las cuentas ya cargadas como “{cuenta.nombre}”, así el historial queda junto.
-        </button>
-      )}
 
       {error && <p className="text-[13px] text-danger">{error}</p>}
 
