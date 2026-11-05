@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { motion } from "framer-motion";
 import { Check, Repeat, StickyNote } from "lucide-react";
-import { CATEGORY_META } from "@/lib/categoryMeta";
+import { useCatalogo } from "@/context/CatalogoContext";
 import { isVencida } from "@/lib/dates";
 import { formatMonto } from "@/lib/format";
 import type { Bill } from "@/types/bill";
@@ -37,7 +37,7 @@ export function BillRow({
   const draggedRef = useRef(false);
   const status = getStatus(bill);
   const parcial = !bill.pagada && bill.montoPagado > 0;
-  const { icon: Icon, label } = CATEGORY_META[bill.categoria];
+  const { icon: Icon, nombre: label } = useCatalogo().categoria(bill.categoria);
   const styles = STATUS_STYLES[status];
 
   async function handleSwipeComplete() {

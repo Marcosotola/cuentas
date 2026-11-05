@@ -1,22 +1,33 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Settings2 } from "lucide-react";
 import { MonthNavigator } from "@/components/MonthNavigator";
 import { SummaryCard } from "@/components/SummaryCard";
 import { DueDateStrip } from "@/components/DueDateStrip";
 import { BillList } from "@/components/BillList";
 import { BillFormSheet } from "@/components/BillFormSheet";
 import { FilterSheet } from "@/components/FilterSheet";
+import { CatalogoSheet } from "@/components/CatalogoSheet";
+import { CatalogoProvider } from "@/context/CatalogoContext";
 import { useBills, type RangeMode } from "@/hooks/useBills";
 import { buildDueDateChips, groupByDueDate } from "@/lib/dueDates";
 import type { Bill } from "@/types/bill";
 
 export default function Home() {
+  return (
+    <CatalogoProvider>
+      <Cuentas />
+    </CatalogoProvider>
+  );
+}
+
+function Cuentas() {
   const [mode, setMode] = useState<RangeMode>({ type: "mes", date: new Date() });
   const [filterOpen, setFilterOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
+  const [catalogoTab, setCatalogoTab] = useState<"cuentas" | "categorias" | null>(null);
 
   const {
     bills,
@@ -60,7 +71,17 @@ export default function Home() {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
       <header ref={headerRef} className="sticky top-0 z-30 border-b border-border/60 bg-background/80 pt-[env(safe-area-inset-top)] backdrop-blur-md">
-        <h1 className="px-4 pt-3 text-[22px] font-bold tracking-tight">Cuentas</h1>
+        <div className="flex items-center justify-between px-4 pt-3">
+          <h1 className="text-[22px] font-bold tracking-tight">Cuentas</h1>
+          <button
+            type="button"
+            onClick={() => setCatalogoTab("cuentas")}
+            aria-label="Gestionar cuentas y categorías"
+            className="-mr-1.5 flex h-9 w-9 items-center justify-center rounded-full text-foreground/70 transition-colors active:bg-surface-muted"
+          >
+            <Settings2 size={19} />
+          </button>
+        </div>
         <MonthNavigator mode={mode} onModeChange={setMode} onOpenFilter={() => setFilterOpen(true)} />
       </header>
 
@@ -103,6 +124,13 @@ export default function Home() {
         onPagoParcial={pagarParcial}
         onEditarPago={corregirPago}
         onEliminarPago={borrarPago}
+        onGestionar={setCatalogoTab}
+      />
+
+      <CatalogoSheet
+        open={catalogoTab !== null}
+        onClose={() => setCatalogoTab(null)}
+        tabInicial={catalogoTab ?? "cuentas"}
       />
 
       <FilterSheet open={filterOpen} onClose={() => setFilterOpen(false)} mode={mode} onModeChange={setMode} />
