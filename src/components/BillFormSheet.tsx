@@ -10,6 +10,7 @@ import { useCatalogo } from "@/context/CatalogoContext";
 import { CATEGORIA_COMODIN } from "@/lib/catalogo";
 import { iconoDe } from "@/lib/categoryMeta";
 import { formatMonto } from "@/lib/format";
+import { pagadoDeMas } from "@/lib/montos";
 import { normalizar } from "@/lib/texto";
 import type { Bill, Categoria, NewBillInput } from "@/types/bill";
 import type { CuentaGuardada } from "@/types/catalogo";
@@ -363,6 +364,11 @@ export function BillFormSheet({
           <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-muted p-3.5">
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-[13px] font-medium text-muted-foreground">Pagos parciales</span>
+              {initial.pagada && pagadoDeMas(initial) > 0 && (
+                <span className="text-[13px] tabular-nums text-muted-foreground">
+                  Pagaste {formatMonto(initial.montoPagado)} · {formatMonto(pagadoDeMas(initial))} de más
+                </span>
+              )}
               {!initial.pagada && (
                 <span className="text-[13px] tabular-nums text-muted-foreground">
                   {initial.montoPagado > 0

@@ -11,7 +11,10 @@ export interface Bill {
   descripcion: string;
   categoria: Categoria;
   monto: number;
-  /** Suma de los pagos parciales registrados. Cuando la cuenta está pagada equivale a `monto`. */
+  /**
+   * Suma de los pagos registrados. Cuando la cuenta está pagada es al menos
+   * `monto`, y puede ser más si se pagó de más (recargos, intereses).
+   */
   montoPagado: number;
   /** Historial de pagos parciales, en el orden en que se registraron. */
   pagos: Pago[];

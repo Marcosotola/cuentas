@@ -39,14 +39,21 @@ function fromPagos(pagos: Pago[]) {
 function toBill(id: string, data: Record<string, unknown>): Bill {
   const monto = data.monto as number;
   const pagada = Boolean(data.pagada);
+  const pagos = toPagos(data.pagos);
   return {
     id,
     descripcion: data.descripcion as string,
     categoria: data.categoria as Bill["categoria"],
     monto,
-    // Las cuentas guardadas antes de los pagos parciales no tienen el campo.
-    montoPagado: pagada ? monto : typeof data.montoPagado === "number" ? data.montoPagado : 0,
-    pagos: toPagos(data.pagos),
+    // Las cuentas guardadas antes de los pagos parciales no tienen el campo. Si
+    // está pagada cuenta lo que realmente se pagó (las que se cerraron antes de
+    // este cambio guardaban el monto aunque los pagos sumaran más).
+    montoPagado: pagada
+      ? Math.max(monto, sumarPagos(pagos), typeof data.montoPagado === "number" ? data.montoPagado : 0)
+      : typeof data.montoPagado === "number"
+        ? data.montoPagado
+        : 0,
+    pagos,
     fechaVencimiento: (data.fechaVencimiento as Timestamp).toDate(),
     pagada,
     fechaPago: data.fechaPago ? (data.fechaPago as Timestamp).toDate() : null,
@@ -191,13 +198,15 @@ export async function setPagada(
   bill: Bill,
   pagada: boolean,
   fechaPago: Date = new Date(),
+  /** Lo que se pagó en total, si los pagos superaron el monto. */
+  totalPagado: number = 0,
 ): Promise<void> {
   const ref = doc(getDb(), COLLECTION, bill.id);
 
   if (pagada) {
     await updateDoc(ref, {
       pagada: true,
-      montoPagado: bill.monto,
+      montoPagado: Math.max(bill.monto, totalPagado),
       fechaPago: Timestamp.fromDate(fechaPago),
     });
   } else {
@@ -241,7 +250,7 @@ async function guardarPagos(bill: Bill, pagos: Pago[], montoPagado: number): Pro
   if (montoPagado >= bill.monto) {
     // Se guarda el historial antes de cerrar la cuenta, así el último pago queda registrado.
     await updateDoc(ref, { pagos: fromPagos(ordenados) });
-    await setPagada(bill, true, ordenados[ordenados.length - 1].fecha);
+    await setPagada(bill, true, ordenados[ordenados.length - 1].fecha, montoPagado);
     return;
   }
   await updateDoc(ref, { montoPagado, pagos: fromPagos(ordenados) });
